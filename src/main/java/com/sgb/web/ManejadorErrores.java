@@ -1,5 +1,7 @@
 package com.sgb.web;
 
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -23,7 +25,10 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -68,10 +73,47 @@ public class ManejadorErrores {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorRespuesta> jsonInvalido(HttpMessageNotReadableException e, HttpServletRequest req) {
         String mensaje = "El cuerpo de la peticion no es un JSON valido o tiene valores con formato incorrecto.";
+        Map<String, String> campos = null;
         if (e.getCause() instanceof UnrecognizedPropertyException campo) {
             mensaje = "El campo '" + campo.getPropertyName() + "' no esta permitido en esta peticion.";
+        } else if (e.getCause() instanceof MismatchedInputException formato && nombreCampo(formato) != null) {
+            // Ejemplos: "abc" en un campo numerico, "31/12/2026" en una fecha.
+            // Se indica el campo y el formato esperado (RNF10: mensajes claros),
+            // con la misma estructura "campos" que los errores de validacion.
+            String nombre = nombreCampo(formato);
+            mensaje = "Hay datos con formato incorrecto en la peticion.";
+            campos = Map.of(nombre, "El campo '" + nombre + "' debe ser " + formatoEsperado(formato.getTargetType()));
         }
-        return responder(HttpStatus.BAD_REQUEST, mensaje, req, null);
+        return responder(HttpStatus.BAD_REQUEST, mensaje, req, campos);
+    }
+
+    /** Nombre del campo del JSON que no se pudo leer (el ultimo de la ruta), o null. */
+    private static String nombreCampo(JsonMappingException e) {
+        List<JsonMappingException.Reference> ruta = e.getPath();
+        if (ruta == null || ruta.isEmpty()) {
+            return null;
+        }
+        return ruta.get(ruta.size() - 1).getFieldName();
+    }
+
+    /** Descripcion, en palabras, del tipo de dato que se esperaba. */
+    private static String formatoEsperado(Class<?> tipo) {
+        if (tipo == null) {
+            return "un valor con el formato correcto";
+        }
+        if (tipo == Integer.class || tipo == int.class || tipo == Long.class || tipo == long.class) {
+            return "un numero entero (sin letras ni decimales)";
+        }
+        if (tipo == BigDecimal.class || tipo == Double.class || tipo == double.class) {
+            return "un numero (use punto para los decimales, sin letras ni simbolos)";
+        }
+        if (tipo == LocalDateTime.class) {
+            return "una fecha y hora valida con el formato AAAA-MM-DDTHH:MM (ejemplo: 2026-12-01T10:30)";
+        }
+        if (tipo == Boolean.class || tipo == boolean.class) {
+            return "true o false";
+        }
+        return "un valor con el formato correcto";
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)

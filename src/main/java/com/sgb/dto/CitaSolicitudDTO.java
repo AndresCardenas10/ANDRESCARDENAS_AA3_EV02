@@ -1,6 +1,7 @@
 package com.sgb.dto;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -22,7 +23,9 @@ import java.time.LocalDateTime;
  * Validaciones de formato (las de negocio estan en CitaService):
  *  - ids obligatorios y positivos;
  *  - notas de maximo 1000 caracteres (antes un texto de 100.000
- *    caracteres provocaba un error 500 al no caber en la columna TEXT).
+ *    caracteres provocaba un error 500 al no caber en la columna TEXT);
+ *  - notas sin los caracteres < > { } (Evidencia AA3-EV02, prueba de
+ *    caracteres especiales).
  */
 @Data
 public class CitaSolicitudDTO {
@@ -46,5 +49,6 @@ public class CitaSolicitudDTO {
 
     /** Opcional: comentario libre sobre la cita. */
     @Size(max = MAX_NOTAS, message = "notas admite como maximo " + MAX_NOTAS + " caracteres")
+    @Pattern(regexp = ValidacionesTexto.TEXTO_LIBRE_SEGURO, message = ValidacionesTexto.MENSAJE_TEXTO_LIBRE)
     private String notas;
 }

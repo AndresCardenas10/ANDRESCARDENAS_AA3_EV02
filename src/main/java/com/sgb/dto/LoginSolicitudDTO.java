@@ -1,5 +1,6 @@
 package com.sgb.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -10,6 +11,7 @@ public class LoginSolicitudDTO {
 
     @NotBlank(message = "El correo es obligatorio")
     @Size(max = 150, message = "El correo admite como maximo 150 caracteres")
+    @Email(regexp = ValidacionesTexto.CORREO, message = "El correo no tiene un formato valido (ejemplo: nombre@dominio.com)")
     private String correo;
 
     @NotBlank(message = "La contrasena es obligatoria")
