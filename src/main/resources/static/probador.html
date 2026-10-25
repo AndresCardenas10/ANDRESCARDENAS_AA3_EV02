@@ -3,160 +3,401 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SGB — Probador de la API</title>
+<title>SGB — Panel del módulo Servicio y Cita</title>
+<!--
+  Panel de pruebas del modulo Servicio y Cita (Evidencia GA7-220501096-AA3-EV02).
+
+  Es la interfaz web del modulo: cada seccion corresponde a una historia de
+  usuario (RF03 agendar, RF08 agenda del barbero, RF09 confirmar, RF11
+  reprogramar) o a la administracion del catalogo de servicios. Todo se
+  hace llamando a la API REST del mismo proyecto.
+
+  Decisiones:
+   - Las validaciones las hace el SERVIDOR (la API). La pagina no bloquea
+     datos invalidos a proposito: los envia tal cual para que se vea el
+     mensaje de error que devuelve la API (RNF10).
+   - Los datos que llegan del servidor se muestran con textContent, nunca
+     con innerHTML, para que un texto malicioso no se ejecute como codigo.
+-->
 <style>
-  :root { color-scheme: light; }
+  :root {
+    --fondo: #f4f2ee; --tarjeta: #ffffff; --borde: #ddd8cf; --texto: #1d1b18; --suave: #6a645b;
+    --primario: #1f3a5f; --primario-claro: #e8eef6; --acento: #b8862b;
+    --ok: #1e7b3c; --ok-fondo: #e6f4ea; --error: #b3261e; --error-fondo: #fbe9e7;
+    --aviso: #8a5a00; --aviso-fondo: #fff4dc;
+  }
   * { box-sizing: border-box; }
   body {
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-    max-width: 900px; margin: 24px auto; padding: 0 16px; color: #1a1a1a; background: #f7f7f8;
+    margin: 0; font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    background: var(--fondo); color: var(--texto); font-size: 15px;
   }
-  h1 { font-size: 1.4rem; margin-bottom: 4px; }
-  p.subtitulo { color: #555; margin-top: 0; }
+  header {
+    background: var(--primario); color: #fff; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 1.15rem; margin: 0; letter-spacing: .2px; }
+  header h1 span { color: #f1c76b; font-weight: 600; }
+  #sesion-actual {
+    font-size: .85rem; background: rgba(255,255,255,.12); padding: 6px 12px; border-radius: 999px;
+  }
+  nav { background: #fff; border-bottom: 1px solid var(--borde); padding: 8px 24px; display: flex; gap: 6px; flex-wrap: wrap; }
+  nav a {
+    font-size: .82rem; text-decoration: none; color: var(--primario); padding: 5px 10px;
+    border-radius: 6px; background: var(--primario-claro);
+  }
+  main {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px;
+    padding: 20px 24px; max-width: 1500px; margin: 0 auto;
+  }
+  @media (max-width: 960px) { main { grid-template-columns: 1fr; } }
   section {
-    background: #fff; border: 1px solid #ddd; border-radius: 10px;
-    padding: 16px 20px; margin-bottom: 20px;
+    background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px;
+    padding: 16px 18px; margin-bottom: 18px; scroll-margin-top: 12px;
   }
-  h2 { font-size: 1.1rem; margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 8px; }
-  h3 { font-size: 0.95rem; color: #333; margin: 18px 0 8px; }
-  label { display: block; font-size: 0.82rem; color: #444; margin-top: 8px; }
-  input {
-    width: 100%; padding: 7px 9px; border: 1px solid #ccc; border-radius: 6px;
-    font-size: 0.92rem; margin-top: 2px;
+  section h2 { font-size: 1.02rem; margin: 0 0 4px; color: var(--primario); }
+  .hu { display: inline-block; font-size: .72rem; font-weight: 700; color: #fff; background: var(--acento);
+        padding: 2px 8px; border-radius: 4px; margin-right: 6px; vertical-align: middle; }
+  .ayuda { font-size: .8rem; color: var(--suave); margin: 2px 0 8px; }
+  label { display: block; font-size: .8rem; color: #3f3a33; margin-top: 8px; font-weight: 600; }
+  input[type=text], input[type=password], input[type=datetime-local] {
+    width: 100%; padding: 7px 9px; border: 1px solid #c9c2b6; border-radius: 6px; font-size: .92rem; margin-top: 3px;
+    background: #fff;
   }
   .fila { display: flex; gap: 10px; flex-wrap: wrap; }
-  .fila > div { flex: 1; min-width: 140px; }
+  .fila > div { flex: 1; min-width: 120px; }
+  .check { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: .85rem; }
   button {
-    margin-top: 12px; margin-right: 8px; padding: 8px 14px; border: none;
-    border-radius: 6px; background: #2d5fda; color: #fff; font-size: 0.88rem;
-    cursor: pointer;
+    margin: 10px 6px 0 0; padding: 7px 13px; border: none; border-radius: 6px; background: var(--primario);
+    color: #fff; font-size: .85rem; cursor: pointer; font-weight: 600;
   }
-  button.secundario { background: #6b6b6b; }
-  button.peligro { background: #c0392b; }
-  button:hover { opacity: 0.9; }
-  pre#resultado {
-    background: #10131a; color: #d6f0d6; padding: 12px; border-radius: 8px;
-    overflow-x: auto; font-size: 0.82rem; min-height: 40px; white-space: pre-wrap; word-break: break-word;
+  button.secundario { background: #5f6b7a; }
+  button.peligro { background: var(--error); }
+  button.exito { background: var(--ok); }
+  button.mini { padding: 4px 9px; font-size: .75rem; background: #fff; color: var(--primario); border: 1px solid var(--primario); }
+  button:hover { filter: brightness(1.1); }
+  #panel-resultado { position: sticky; top: 12px; align-self: start; max-height: calc(100vh - 24px); overflow: auto; }
+  #estado { font-weight: 700; padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; background: #eee; }
+  #estado.ok { color: var(--ok); background: var(--ok-fondo); }
+  #estado.error { color: var(--error); background: var(--error-fondo); }
+  #mensaje { margin: 0 0 8px; font-weight: 600; }
+  #lista-campos { margin: 0 0 10px; padding-left: 18px; color: var(--error); font-size: .9rem; }
+  #lista-campos li { margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-bottom: 10px; }
+  th, td { text-align: left; padding: 6px 7px; border-bottom: 1px solid #ece7de; vertical-align: top; }
+  th { background: #f7f4ee; color: #4a443b; font-weight: 700; }
+  .estado-cita { font-weight: 700; padding: 2px 7px; border-radius: 4px; font-size: .75rem; white-space: nowrap; }
+  .e-pendiente { background: var(--aviso-fondo); color: var(--aviso); }
+  .e-confirmada { background: var(--primario-claro); color: var(--primario); }
+  .e-completada { background: var(--ok-fondo); color: var(--ok); }
+  .e-cancelada { background: var(--error-fondo); color: var(--error); }
+  h3 { font-size: .85rem; margin: 14px 0 6px; color: #4a443b; text-transform: uppercase; letter-spacing: .4px; }
+  pre {
+    background: #14171f; color: #d7ecd7; padding: 10px 12px; border-radius: 8px; overflow-x: auto;
+    font-size: .78rem; white-space: pre-wrap; word-break: break-word; margin: 0 0 8px;
   }
-  #estado { font-weight: 600; margin-bottom: 6px; }
-  #estado.ok { color: #1e8e3e; }
-  #estado.error { color: #c0392b; }
-  .ayuda { font-size: 0.78rem; color: #777; margin: 2px 0 0; }
+  pre.peticion { background: #1f2633; color: #cfe0ff; }
+  code { background: #f1ede6; padding: 1px 4px; border-radius: 3px; }
 </style>
 </head>
 <body>
 
-<h1>SGB — Probador de la API (Servicio y Cita)</h1>
-<p class="subtitulo">
-  Herramienta simple para probar los endpoints sin instalar nada más.
-  Los resultados de cada acción aparecen abajo, en "Resultado de la última acción" —
-  eso es lo que debes capturar en cada pantallazo de la Etapa 4.
-</p>
+<header>
+  <h1>SGB · Sistema Gestión Barbería — <span>Módulo Servicio y Cita</span></h1>
+  <div id="sesion-actual">Sin sesión iniciada</div>
+</header>
+<nav>
+  <a href="#sec-sesion">Sesión</a>
+  <a href="#sec-servicios">Servicios</a>
+  <a href="#sec-agendar">RF03 Agendar</a>
+  <a href="#sec-agenda">RF08 Agenda / historial</a>
+  <a href="#sec-reprogramar">RF11 Reprogramar</a>
+  <a href="#sec-estado">RF09 Confirmar / estados</a>
+</nav>
 
-<section>
-  <h2>Resultado de la última acción</h2>
-  <div id="estado">(todavía no se ha probado nada)</div>
-  <pre id="resultado">Presiona cualquier botón de abajo para ver aquí la respuesta de la API.</pre>
+<main>
+<div id="columna-formularios">
+
+  <section id="sec-sesion">
+    <h2><span class="hu">RNF04 · RNF11</span>Inicio de sesión</h2>
+    <p class="ayuda">
+      Lo que puede hacer cada usuario depende de su rol: el <b>Administrador</b> gestiona todo; el
+      <b>Cliente</b> agenda, ve, reprograma y cancela sus propias citas; el <b>Barbero</b> ve su agenda
+      y confirma, completa o cancela sus citas.
+    </p>
+    <div class="fila">
+      <div><label for="login-correo">Correo</label><input id="login-correo" type="text" autocomplete="username"></div>
+      <div><label for="login-contrasena">Contraseña</label><input id="login-contrasena" type="password" autocomplete="current-password"></div>
+    </div>
+    <div>
+      <button class="mini" onclick="usarCorreo('admin@sgb.com')">Administrador</button>
+      <button class="mini" onclick="usarCorreo('barbero@sgb.com')">Barbero</button>
+      <button class="mini" onclick="usarCorreo('cliente@sgb.com')">Cliente</button>
+      <button class="mini" onclick="usarCorreo('cliente2@sgb.com')">Cliente 2</button>
+    </div>
+    <button onclick="iniciarSesion()">Iniciar sesión</button>
+    <button class="secundario" onclick="cerrarSesion()">Cerrar sesión</button>
+  </section>
+
+  <section id="sec-servicios">
+    <h2><span class="hu">Apoyo RF03</span>Catálogo de servicios</h2>
+    <p class="ayuda">Todos ven los servicios activos. Crear, editar, desactivar y ver los desactivados es solo para el Administrador.</p>
+    <button onclick="listarServicios(false)">Listar servicios activos</button>
+    <button class="secundario" onclick="listarServicios(true)">Listar todos (incluye desactivados)</button>
+
+    <h3>Crear o editar un servicio</h3>
+    <p class="ayuda">Deje el id vacío para <b>crear</b>. Escriba un id y pulse "Cargar" para <b>editarlo</b>.</p>
+    <div class="fila">
+      <div style="max-width:110px"><label for="srv-id">id</label><input id="srv-id" type="text" placeholder="ej: 1"></div>
+      <div><label for="srv-nombre">Nombre</label><input id="srv-nombre" type="text" value="Corte degradado"></div>
+    </div>
+    <div class="fila">
+      <div><label for="srv-precio">Precio (COP)</label><input id="srv-precio" type="text" value="25000"></div>
+      <div><label for="srv-duracion">Duración (minutos)</label><input id="srv-duracion" type="text" value="30"></div>
+    </div>
+    <label for="srv-descripcion">Descripción</label><input id="srv-descripcion" type="text" value="Corte moderno con máquina y tijera">
+    <label class="check"><input id="srv-activo" type="checkbox" checked> Activo</label>
+    <button class="secundario" onclick="cargarServicio()">Cargar</button>
+    <button onclick="crearServicio()">Crear servicio</button>
+    <button class="exito" onclick="actualizarServicio()">Guardar cambios</button>
+    <button class="peligro" onclick="desactivarServicio()">Desactivar</button>
+  </section>
+
+  <section id="sec-agendar">
+    <h2><span class="hu">RF03</span>Agendar una cita</h2>
+    <p class="ayuda">
+      La cita queda en estado <b>pendiente</b>. Un cliente solo puede agendar a su propio nombre
+      (su id se llena solo al iniciar sesión como Cliente). Fecha con formato <code>AAAA-MM-DDTHH:MM</code>.
+    </p>
+    <div class="fila">
+      <div><label for="cita-cliente">id cliente</label><input id="cita-cliente" type="text" placeholder="ej: 4"></div>
+      <div><label for="cita-barbero">id barbero</label><input id="cita-barbero" type="text" value="2"></div>
+      <div><label for="cita-servicio">id servicio</label><input id="cita-servicio" type="text" value="1"></div>
+    </div>
+    <div class="fila">
+      <div><label for="cita-fecha">Fecha y hora</label><input id="cita-fecha" type="text" placeholder="2026-12-01T10:30"></div>
+      <div><label for="cita-notas">Notas (opcional)</label><input id="cita-notas" type="text" placeholder="ej: primera vez"></div>
+    </div>
+    <button onclick="crearCita()">Agendar cita</button>
+  </section>
+
+  <section id="sec-agenda">
+    <h2><span class="hu">RF08</span>Agenda del barbero e historial del cliente</h2>
+    <p class="ayuda">Las citas se muestran ordenadas por fecha y hora. El barbero solo ve su agenda; el cliente solo su historial.</p>
+    <div class="fila">
+      <div style="max-width:160px"><label for="consulta-id">id del usuario</label><input id="consulta-id" type="text" placeholder="ej: 2"></div>
+    </div>
+    <button onclick="agendaBarbero()">Agenda del barbero</button>
+    <button class="secundario" onclick="historialCliente()">Historial del cliente</button>
+    <button class="secundario" onclick="listarCitas()">Todas las citas (Administrador)</button>
+  </section>
+
+  <section id="sec-reprogramar">
+    <h2><span class="hu">RF11</span>Reprogramar una cita</h2>
+    <p class="ayuda">Escriba el id de la cita y pulse "Cargar cita"; luego cambie la fecha, la hora o las notas y guarde.
+      Solo se reprograman citas pendientes o confirmadas.</p>
+    <div class="fila">
+      <div style="max-width:120px"><label for="rep-id">id cita</label><input id="rep-id" type="text" placeholder="ej: 1"></div>
+      <div><label for="rep-fecha">Nueva fecha y hora</label><input id="rep-fecha" type="text" placeholder="2026-12-02T16:00"></div>
+    </div>
+    <div class="fila">
+      <div><label for="rep-barbero">id barbero</label><input id="rep-barbero" type="text"></div>
+      <div><label for="rep-servicio">id servicio</label><input id="rep-servicio" type="text"></div>
+      <div><label for="rep-cliente">id cliente</label><input id="rep-cliente" type="text"></div>
+    </div>
+    <label for="rep-notas">Notas</label><input id="rep-notas" type="text">
+    <button class="secundario" onclick="cargarCita()">Cargar cita</button>
+    <button class="exito" onclick="reprogramarCita()">Reprogramar</button>
+  </section>
+
+  <section id="sec-estado">
+    <h2><span class="hu">RF09</span>Confirmar, completar, cancelar o eliminar</h2>
+    <p class="ayuda">Confirmar y completar: el barbero de la cita o el Administrador. Cancelar: también el cliente dueño.
+      Eliminar: solo el Administrador. Una cita cancelada o completada ya no cambia de estado.</p>
+    <div class="fila">
+      <div style="max-width:160px"><label for="estado-id">id de la cita</label><input id="estado-id" type="text" placeholder="ej: 1"></div>
+    </div>
+    <button class="secundario" onclick="consultarCita()">Consultar</button>
+    <button class="exito" onclick="cambiarEstadoCita('confirmar')">Confirmar</button>
+    <button onclick="cambiarEstadoCita('completar')">Completar</button>
+    <button class="peligro" onclick="cambiarEstadoCita('cancelar')">Cancelar</button>
+    <button class="peligro" onclick="eliminarCita()">Eliminar</button>
+  </section>
+</div>
+
+<section id="panel-resultado">
+  <h2>Resultado</h2>
+  <div id="estado">Todavía no se ha realizado ninguna acción</div>
+  <p id="mensaje"></p>
+  <ul id="lista-campos"></ul>
+  <div id="tabla-resultado"></div>
+  <h3>Petición enviada</h3>
+  <pre class="peticion" id="peticion">—</pre>
+  <h3>Respuesta de la API (JSON)</h3>
+  <pre id="resultado">—</pre>
 </section>
-
-<section>
-  <h2>Sesión</h2>
-  <p class="ayuda">
-    Desde la auditoría de seguridad la API exige iniciar sesión. Usa el correo y la
-    contraseña de un usuario de la tabla <code>usuario</code>. Lo que puedes hacer depende
-    de su rol: el Administrador gestiona todo; el Cliente agenda, ve, reprograma y cancela
-    sus propias citas; el Barbero ve su agenda y confirma, completa o cancela sus citas.
-  </p>
-  <div class="fila">
-    <div><label>Correo</label><input id="login-correo" type="email" autocomplete="username"></div>
-    <div><label>Contraseña</label><input id="login-contrasena" type="password" autocomplete="current-password"></div>
-  </div>
-  <button onclick="iniciarSesion()">Iniciar sesión</button>
-  <button class="secundario" onclick="cerrarSesion()">Cerrar sesión</button>
-  <p class="ayuda" id="sesion-actual">Sin sesión iniciada.</p>
-</section>
-
-<section>
-  <h2>Módulo Servicio</h2>
-
-  <button onclick="listarServicios(false)">Listar servicios activos</button>
-  <button class="secundario" onclick="listarServicios(true)">Listar TODOS (incluye desactivados)</button>
-
-  <h3>Crear un servicio nuevo</h3>
-  <div class="fila">
-    <div><label>Nombre</label><input id="srv-nombre" value="Corte degradado"></div>
-    <div><label>Precio</label><input id="srv-precio" value="25000"></div>
-    <div><label>Duración (min)</label><input id="srv-duracion" value="30"></div>
-  </div>
-  <label>Descripción</label><input id="srv-descripcion" value="Corte moderno con maquina y tijera">
-  <button onclick="crearServicio()">Crear servicio</button>
-
-  <h3>Consultar / desactivar un servicio existente</h3>
-  <div class="fila">
-    <div><label>id del servicio</label><input id="srv-id" placeholder="ej: 1"></div>
-  </div>
-  <button onclick="consultarServicio()">Consultar</button>
-  <button class="peligro" onclick="desactivarServicio()">Desactivar</button>
-</section>
-
-<section>
-  <h2>Módulo Cita</h2>
-
-  <button onclick="listarCitas()">Listar todas las citas</button>
-
-  <h3>Agendar una cita nueva</h3>
-  <p class="ayuda">
-    Usa ids reales de la tabla usuario: por ejemplo, un cliente (rol Cliente)
-    y un barbero (rol Barbero) que ya existan en tu base de datos, y un id
-    de servicio activo (revisa la lista de servicios de arriba).
-  </p>
-  <div class="fila">
-    <div><label>id cliente</label><input id="cita-cliente" placeholder="ej: 6"></div>
-    <div><label>id barbero</label><input id="cita-barbero" placeholder="ej: 4"></div>
-    <div><label>id servicio</label><input id="cita-servicio" placeholder="ej: 1"></div>
-  </div>
-  <div class="fila">
-    <div><label>Fecha y hora</label><input id="cita-fecha" type="datetime-local"></div>
-    <div><label>Notas (opcional)</label><input id="cita-notas" placeholder="ej: primera vez"></div>
-  </div>
-  <button onclick="crearCita()">Agendar cita</button>
-
-  <h3>Consultar / cambiar el estado de una cita existente</h3>
-  <div class="fila">
-    <div><label>id de la cita</label><input id="cita-id" placeholder="ej: 1"></div>
-  </div>
-  <button onclick="consultarCita()">Consultar</button>
-  <button onclick="cambiarEstadoCita('confirmar')">Confirmar</button>
-  <button class="secundario" onclick="cambiarEstadoCita('completar')">Completar</button>
-  <button class="peligro" onclick="cambiarEstadoCita('cancelar')">Cancelar</button>
-</section>
+</main>
 
 <script>
-  function ahoraMasUnaHora() {
-    const d = new Date(Date.now() + 60 * 60 * 1000);
-    d.setMinutes(0, 0, 0);
-    return d.toISOString().slice(0, 16);
-  }
-  document.getElementById('cita-fecha').value = ahoraMasUnaHora();
+  'use strict';
 
-  function mostrar(status, cuerpo) {
-    const estado = document.getElementById('estado');
-    const resultado = document.getElementById('resultado');
+  // ---------------------------------------------------------------
+  // Utilidades
+  // ---------------------------------------------------------------
+  const $ = (id) => document.getElementById(id);
+
+  /** Fecha local en formato AAAA-MM-DDTHH:MM (lo que espera la API). */
+  function fechaLocal(fecha) {
+    const dos = (n) => String(n).padStart(2, '0');
+    return fecha.getFullYear() + '-' + dos(fecha.getMonth() + 1) + '-' + dos(fecha.getDate())
+      + 'T' + dos(fecha.getHours()) + ':' + dos(fecha.getMinutes());
+  }
+  /** Propone pasado manana a las 10:00 como fecha por defecto. */
+  function fechaSugerida() {
+    const d = new Date();
+    d.setDate(d.getDate() + 2);
+    d.setHours(10, 0, 0, 0);
+    return fechaLocal(d);
+  }
+  $('cita-fecha').value = fechaSugerida();
+
+  /**
+   * Convierte lo escrito en un campo numerico: si es un numero valido se
+   * envia como numero; si esta vacio se envia null; si tiene letras se
+   * envia el texto tal cual para que la API responda con su validacion.
+   */
+  function numero(id) {
+    const valor = $(id).value.trim();
+    if (valor === '') return null;
+    return /^-?\d+(\.\d+)?$/.test(valor) ? Number(valor) : valor;
+  }
+  function texto(id) {
+    const valor = $(id).value;
+    return valor === '' ? null : valor;
+  }
+  /** Ids que van en la URL: se codifican para que nada "rompa" la ruta. */
+  function idUrl(id) {
+    return encodeURIComponent($(id).value.trim());
+  }
+
+  const NOMBRES_ESTADO_HTTP = {
+    200: 'OK', 201: 'Creado', 204: 'Sin contenido (operación exitosa)', 400: 'Datos inválidos',
+    401: 'No autenticado', 403: 'Sin permiso', 404: 'No encontrado', 409: 'Conflicto',
+    413: 'Petición demasiado grande', 415: 'Tipo de contenido no soportado', 429: 'Demasiados intentos',
+    500: 'Error interno', 503: 'Servicio no disponible'
+  };
+
+  // ---------------------------------------------------------------
+  // Presentacion del resultado (siempre con textContent)
+  // ---------------------------------------------------------------
+  function celda(fila, valor, clase) {
+    const td = document.createElement('td');
+    if (clase) {
+      const span = document.createElement('span');
+      span.className = clase;
+      span.textContent = valor;
+      td.appendChild(span);
+    } else {
+      td.textContent = valor === null || valor === undefined ? '—' : String(valor);
+    }
+    fila.appendChild(td);
+  }
+  function fechaBonita(valor) {
+    if (!valor) return '—';
+    const d = new Date(valor);
+    if (isNaN(d)) return valor;
+    return d.toLocaleDateString('es-CO', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
+      + ' ' + d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  }
+  function pesos(valor) {
+    return valor === null || valor === undefined ? '—'
+      : Number(valor).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 2 });
+  }
+
+  function tablaCitas(citas) {
+    const tabla = document.createElement('table');
+    const cab = tabla.createTHead().insertRow();
+    ['id', 'Fecha y hora', 'Cliente', 'Barbero', 'Servicio', 'Estado', 'Notas'].forEach((t) => {
+      const th = document.createElement('th'); th.textContent = t; cab.appendChild(th);
+    });
+    const cuerpo = tabla.createTBody();
+    citas.slice().sort((a, b) => String(a.fechaHora).localeCompare(String(b.fechaHora))).forEach((c) => {
+      const f = cuerpo.insertRow();
+      celda(f, c.idCita);
+      celda(f, fechaBonita(c.fechaHora));
+      celda(f, c.cliente + ' (id ' + c.idCliente + ')');
+      celda(f, c.barbero + ' (id ' + c.idBarbero + ')');
+      celda(f, c.servicio + ' · ' + pesos(c.precioServicio));
+      celda(f, c.estado, 'estado-cita e-' + c.estado);
+      celda(f, c.notas);
+    });
+    return tabla;
+  }
+  function tablaServicios(servicios) {
+    const tabla = document.createElement('table');
+    const cab = tabla.createTHead().insertRow();
+    ['id', 'Nombre', 'Precio', 'Duración', 'Activo', 'Descripción'].forEach((t) => {
+      const th = document.createElement('th'); th.textContent = t; cab.appendChild(th);
+    });
+    const cuerpo = tabla.createTBody();
+    servicios.forEach((s) => {
+      const f = cuerpo.insertRow();
+      celda(f, s.idServicio);
+      celda(f, s.nombre);
+      celda(f, pesos(s.precio));
+      celda(f, s.duracionMin + ' min');
+      celda(f, s.activo ? 'Sí' : 'No', s.activo ? 'estado-cita e-completada' : 'estado-cita e-cancelada');
+      celda(f, s.descripcion);
+    });
+    return tabla;
+  }
+
+  function mostrar(metodo, url, cuerpoEnviado, status, datos) {
     const ok = status >= 200 && status < 300;
-    estado.textContent = 'HTTP ' + status + (ok ? ' — correcto' : ' — hubo un error');
-    estado.className = ok ? 'ok' : 'error';
-    resultado.textContent = typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo, null, 2);
+    $('estado').textContent = status === 0 ? 'Sin conexión con la API'
+      : 'HTTP ' + status + ' · ' + (NOMBRES_ESTADO_HTTP[status] || '') + (ok ? ' ✔' : ' ✖');
+    $('estado').className = ok ? 'ok' : 'error';
+
+    $('mensaje').textContent = '';
+    $('lista-campos').replaceChildren();
+    $('tabla-resultado').replaceChildren();
+
+    if (datos && typeof datos === 'object' && !Array.isArray(datos) && datos.mensaje) {
+      $('mensaje').textContent = datos.mensaje;
+      if (datos.campos) {
+        Object.entries(datos.campos).forEach(([campo, msj]) => {
+          const li = document.createElement('li');
+          li.textContent = campo + ': ' + msj;
+          $('lista-campos').appendChild(li);
+        });
+      }
+    } else if (Array.isArray(datos)) {
+      $('mensaje').textContent = datos.length + ' registro(s) encontrado(s)';
+      if (datos.length && datos[0].idCita !== undefined) $('tabla-resultado').appendChild(tablaCitas(datos));
+      else if (datos.length && datos[0].idServicio !== undefined) $('tabla-resultado').appendChild(tablaServicios(datos));
+    } else if (datos && datos.idCita !== undefined) {
+      $('mensaje').textContent = 'Cita #' + datos.idCita + ' — estado: ' + datos.estado;
+      $('tabla-resultado').appendChild(tablaCitas([datos]));
+    } else if (datos && datos.idServicio !== undefined) {
+      $('mensaje').textContent = 'Servicio #' + datos.idServicio + ' — ' + datos.nombre;
+      $('tabla-resultado').appendChild(tablaServicios([datos]));
+    } else if (status === 204) {
+      $('mensaje').textContent = 'La operación se realizó correctamente.';
+    }
+
+    let peticion = metodo + ' ' + url;
+    if (cuerpoEnviado !== undefined) peticion += '\nContent-Type: application/json\n\n' + JSON.stringify(cuerpoEnviado, null, 2);
+    $('peticion').textContent = peticion;
+    $('resultado').textContent = datos === undefined || datos === '' ? '(sin contenido)'
+      : (typeof datos === 'string' ? datos : JSON.stringify(datos, null, 2));
   }
 
+  // ---------------------------------------------------------------
+  // Llamadas a la API
+  // ---------------------------------------------------------------
   // Token anti-CSRF que entrega el servidor al iniciar sesion. Se envia en
   // la cabecera X-CSRF-Token en toda peticion que modifica datos.
   let tokenCsrf = null;
-
-  function mostrarSesion(datos) {
-    const p = document.getElementById('sesion-actual');
-    p.textContent = datos ? ('Sesión iniciada: ' + datos.nombre + ' (' + datos.rol + ', id ' + datos.idUsuario + ')')
-                          : 'Sin sesión iniciada.';
-  }
+  let sesion = null;
 
   async function llamar(metodo, url, cuerpo) {
     try {
@@ -165,76 +406,120 @@
         opciones.headers['Content-Type'] = 'application/json';
         opciones.body = JSON.stringify(cuerpo);
       }
-      if (metodo !== 'GET' && tokenCsrf) {
-        opciones.headers['X-CSRF-Token'] = tokenCsrf;
-      }
+      if (metodo !== 'GET' && tokenCsrf) opciones.headers['X-CSRF-Token'] = tokenCsrf;
       const resp = await fetch(url, opciones);
+      const textoResp = await resp.text();
       let datos;
-      const texto = await resp.text();
-      try { datos = texto ? JSON.parse(texto) : '(sin contenido, esto es normal en Desactivar/Cancelar/Eliminar)'; }
-      catch { datos = texto; }
-      mostrar(resp.status, datos);
+      try { datos = textoResp ? JSON.parse(textoResp) : ''; } catch (e) { datos = textoResp; }
+      mostrar(metodo, url, cuerpo, resp.status, datos);
       return { status: resp.status, datos: datos };
     } catch (err) {
-      mostrar(0, 'No se pudo conectar con la API en ' + url +
-        '. Verifica que el proyecto este corriendo (revisa la consola de NetBeans) y que la URL use el puerto 8081.\n\nDetalle tecnico: ' + err);
+      mostrar(metodo, url, cuerpo, 0, 'No se pudo conectar con la API. Verifique que el proyecto esté corriendo '
+        + '(consola de NetBeans) y que la dirección use el puerto 8081.\n\nDetalle técnico: ' + err);
+      return { status: 0 };
     }
   }
 
+  function mostrarSesion(datos) {
+    sesion = datos;
+    $('sesion-actual').textContent = datos
+      ? 'Sesión: ' + datos.nombre + ' · ' + datos.rol + ' · id ' + datos.idUsuario
+      : 'Sin sesión iniciada';
+    if (datos && datos.rol === 'CLIENTE') $('cita-cliente').value = datos.idUsuario;
+    if (datos && (datos.rol === 'BARBERO' || datos.rol === 'CLIENTE')) $('consulta-id').value = datos.idUsuario;
+  }
+
+  function usarCorreo(correo) {
+    $('login-correo').value = correo;
+    $('login-contrasena').focus();
+  }
   async function iniciarSesion() {
     const r = await llamar('POST', '/api/auth/login', {
-      correo: document.getElementById('login-correo').value,
-      contrasena: document.getElementById('login-contrasena').value
+      correo: $('login-correo').value,
+      contrasena: $('login-contrasena').value
     });
-    document.getElementById('login-contrasena').value = '';
-    if (r && r.status === 200) { tokenCsrf = r.datos.csrfToken; mostrarSesion(r.datos); }
+    if (r.status === 200) {
+      tokenCsrf = r.datos.csrfToken;
+      mostrarSesion(r.datos);
+      $('login-contrasena').value = '';
+    }
   }
   async function cerrarSesion() {
     await llamar('POST', '/api/auth/logout');
-    tokenCsrf = null; mostrarSesion(null);
+    tokenCsrf = null;
+    mostrarSesion(null);
   }
-  // Si ya habia una sesion abierta (por ejemplo, al recargar la pagina), recupera el token.
+  // Si ya habia una sesion abierta (por ejemplo, al recargar), recupera el token.
   fetch('/api/auth/sesion', { credentials: 'same-origin' })
-    .then(r => r.ok ? r.json() : null)
-    .then(d => { if (d) { tokenCsrf = d.csrfToken; mostrarSesion(d); } })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => { if (d) { tokenCsrf = d.csrfToken; mostrarSesion(d); } })
     .catch(() => {});
 
-  function listarServicios(todos) {
-    llamar('GET', '/api/servicios' + (todos ? '?todos=true' : ''));
+  // ---- Servicios ----
+  function datosServicio() {
+    return {
+      nombre: texto('srv-nombre'),
+      descripcion: texto('srv-descripcion'),
+      precio: numero('srv-precio'),
+      duracionMin: numero('srv-duracion'),
+      activo: $('srv-activo').checked
+    };
   }
+  function listarServicios(todos) { llamar('GET', '/api/servicios' + (todos ? '?todos=true' : '')); }
   function crearServicio() {
-    llamar('POST', '/api/servicios', {
-      nombre: document.getElementById('srv-nombre').value,
-      descripcion: document.getElementById('srv-descripcion').value,
-      precio: Number(document.getElementById('srv-precio').value),
-      duracionMin: Number(document.getElementById('srv-duracion').value)
-    });
+    const datos = datosServicio();
+    delete datos.activo; // al crear, siempre queda activo
+    llamar('POST', '/api/servicios', datos);
   }
-  function consultarServicio() {
-    llamar('GET', '/api/servicios/' + document.getElementById('srv-id').value);
+  async function cargarServicio() {
+    const r = await llamar('GET', '/api/servicios/' + idUrl('srv-id'));
+    if (r.status === 200) {
+      $('srv-nombre').value = r.datos.nombre || '';
+      $('srv-precio').value = r.datos.precio;
+      $('srv-duracion').value = r.datos.duracionMin;
+      $('srv-descripcion').value = r.datos.descripcion || '';
+      $('srv-activo').checked = !!r.datos.activo;
+    }
   }
-  function desactivarServicio() {
-    llamar('DELETE', '/api/servicios/' + document.getElementById('srv-id').value);
-  }
+  function actualizarServicio() { llamar('PUT', '/api/servicios/' + idUrl('srv-id'), datosServicio()); }
+  function desactivarServicio() { llamar('DELETE', '/api/servicios/' + idUrl('srv-id')); }
 
-  function listarCitas() {
-    llamar('GET', '/api/citas');
-  }
+  // ---- Citas ----
   function crearCita() {
     llamar('POST', '/api/citas', {
-      idCliente: Number(document.getElementById('cita-cliente').value),
-      idBarbero: Number(document.getElementById('cita-barbero').value),
-      idServicio: Number(document.getElementById('cita-servicio').value),
-      fechaHora: document.getElementById('cita-fecha').value,
-      notas: document.getElementById('cita-notas').value
+      idCliente: numero('cita-cliente'),
+      idBarbero: numero('cita-barbero'),
+      idServicio: numero('cita-servicio'),
+      fechaHora: texto('cita-fecha'),
+      notas: texto('cita-notas')
     });
   }
-  function consultarCita() {
-    llamar('GET', '/api/citas/' + document.getElementById('cita-id').value);
+  function agendaBarbero() { llamar('GET', '/api/citas/barbero/' + idUrl('consulta-id')); }
+  function historialCliente() { llamar('GET', '/api/citas/cliente/' + idUrl('consulta-id')); }
+  function listarCitas() { llamar('GET', '/api/citas'); }
+
+  async function cargarCita() {
+    const r = await llamar('GET', '/api/citas/' + idUrl('rep-id'));
+    if (r.status === 200) {
+      $('rep-fecha').value = String(r.datos.fechaHora).slice(0, 16);
+      $('rep-barbero').value = r.datos.idBarbero;
+      $('rep-servicio').value = r.datos.idServicio;
+      $('rep-cliente').value = r.datos.idCliente;
+      $('rep-notas').value = r.datos.notas || '';
+    }
   }
-  function cambiarEstadoCita(accion) {
-    llamar('PUT', '/api/citas/' + document.getElementById('cita-id').value + '/' + accion);
+  function reprogramarCita() {
+    llamar('PUT', '/api/citas/' + idUrl('rep-id'), {
+      idCliente: numero('rep-cliente'),
+      idBarbero: numero('rep-barbero'),
+      idServicio: numero('rep-servicio'),
+      fechaHora: texto('rep-fecha'),
+      notas: texto('rep-notas')
+    });
   }
+  function consultarCita() { llamar('GET', '/api/citas/' + idUrl('estado-id')); }
+  function cambiarEstadoCita(accion) { llamar('PUT', '/api/citas/' + idUrl('estado-id') + '/' + accion); }
+  function eliminarCita() { llamar('DELETE', '/api/citas/' + idUrl('estado-id')); }
 </script>
 </body>
 </html>
