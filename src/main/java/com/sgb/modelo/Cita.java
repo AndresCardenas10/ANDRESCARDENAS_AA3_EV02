@@ -92,19 +92,37 @@ public class Cita {
     // (agendar(), cancelar(), completar()). Se adaptan aqui a los valores
     // reales del enum EstadoCita en vez de los nombres en mayuscula que
     // tenia ese diagrama, por la misma razon explicada en EstadoCita.java.
+    //
+    // Ahora cada metodo VALIDA la transicion (ver EstadoCita.puedeCambiarA):
+    // si no es valida lanza TransicionInvalidaException y la cita no cambia.
 
     /** Pasa la cita de "pendiente" a "confirmada". */
     public void confirmar() {
-        this.estado = EstadoCita.confirmada;
+        cambiarEstado(EstadoCita.confirmada);
     }
 
     /** Cancela la cita (no la borra de la base de datos). */
     public void cancelar() {
-        this.estado = EstadoCita.cancelada;
+        cambiarEstado(EstadoCita.cancelada);
     }
 
     /** Marca la cita como atendida. */
     public void completar() {
-        this.estado = EstadoCita.completada;
+        cambiarEstado(EstadoCita.completada);
+    }
+
+    private void cambiarEstado(EstadoCita destino) {
+        EstadoCita actual = this.estado == null ? EstadoCita.pendiente : this.estado;
+        if (!actual.puedeCambiarA(destino)) {
+            throw new TransicionInvalidaException(actual, destino);
+        }
+        this.estado = destino;
+    }
+
+    /** Error de negocio: el cambio de estado pedido no esta permitido. */
+    public static class TransicionInvalidaException extends RuntimeException {
+        public TransicionInvalidaException(EstadoCita actual, EstadoCita destino) {
+            super("No se puede pasar una cita de '" + actual + "' a '" + destino + "'");
+        }
     }
 }

@@ -1,6 +1,12 @@
 # Módulos Servicio y Cita — API REST (SGB)
 Evidencia **GA7-220501096-AA3-EV01** — Codificación de módulos del software
 
+> Nota sobre la referencia de esta evidencia: este README corresponde a
+> **AA3-EV01**. (En la Evidencia anterior, AA2-EV02, el instructor señaló
+> que en parte de la documentación seguía apareciendo "EV01" por error;
+> aquí se revisó con cuidado que la numeración fuera consistente en todo
+> el documento.)
+
 ## Qué hace este proyecto
 
 Una **API REST** (con Spring Boot y Spring Data JPA) para los módulos
@@ -83,6 +89,18 @@ AA2-EV01/EV02): clases en `PascalCase`, métodos y variables en
 
 ## Endpoints disponibles
 
+> Desde la auditoría de seguridad (octubre 2026) **todos los endpoints exigen
+> haber iniciado sesión** y cada operación verifica el rol del usuario. Ver la
+> sección "Seguridad" más abajo.
+
+### Autenticación (nuevo)
+
+| Método | Endpoint            | Qué hace                                                        |
+|--------|---------------------|------------------------------------------------------------------|
+| POST   | `/api/auth/login`   | `{"correo","contrasena"}` → crea la sesión y devuelve `csrfToken` |
+| GET    | `/api/auth/sesion`  | Datos del usuario de la sesión actual (y su `csrfToken`)          |
+| POST   | `/api/auth/logout`  | Cierra la sesión                                                 |
+
 ### Servicio
 
 | Método | Endpoint                  | Qué hace                                   |
@@ -122,7 +140,8 @@ previo, está en el documento de la Etapa 4 de esta evidencia. En resumen:
    página de prueba incluida en el proyecto (`src/main/resources/static/probador.html`)
    con botones y formularios para probar los endpoints de Servicio y
    Cita (crear, listar, cambiar estado, etc.) sin instalar Postman ni
-   nada adicional.
+   nada adicional. **Primero inicia sesión** en la sección "Sesión" con el
+   correo y la contraseña de un usuario de la tabla `usuario`.
 
 La API queda disponible en `http://localhost:8081`.
 
@@ -151,20 +170,83 @@ La API queda disponible en `http://localhost:8081`.
 
 ## Pruebas ejecutadas y resultados
 
-Pruebas ejecutadas el 27 de septiembre de 2026, sobre la base de datos
-real `sgb` (MySQL/XAMPP, puerto 3307), usando la página `probador.html`
-incluida en el proyecto. Esto corrige, además, la observación puntual
-del instructor en la Evidencia AA2-EV02 sobre documentar en el README
-las pruebas ejecutadas y sus resultados.
+> Esta sección se completa después de ejecutar la guía de pruebas
+> (Etapa 4 de esta evidencia) y se actualiza con los resultados reales
+> antes de la entrega final — así se corrige, además, la observación
+> puntual del instructor en la Evidencia AA2-EV02 sobre documentar en el
+> README las pruebas ejecutadas y sus resultados.
 
-| # | Prueba | Resultado esperado | Resultado obtenido |
-|---|--------|---------------------|----------------------|
-| 1 | Arranque de la aplicación (`spring-boot:run`) | Hibernate valida las entidades contra las tablas reales sin errores; el servidor inicia en el puerto 8081 | ✅ Arrancó correctamente ("Started SgbServicioCitaApiApplication"), conexión a MySQL establecida (HikariCP) y validación del esquema exitosa |
-| 2 | `GET /api/servicios` | Devuelve la lista de servicios activos | ✅ Responde correctamente con la lista |
-| 3 | `POST /api/servicios` | Crea un servicio nuevo, responde 201 | ✅ Servicio creado correctamente |
-| 4 | `POST /api/citas` con un usuario que no tiene el rol de Barbero | Responde 400 con un mensaje que explique la causa | ✅ Rechazada con HTTP 400 y el mensaje "...no tiene el rol de Barbero, no se le pueden asignar citas" |
-| 5 | `POST /api/citas` con cliente, barbero y servicio válidos | Agenda la cita, responde 201, estado inicial "pendiente" | ✅ Citas agendadas correctamente (ids 2 y 3) |
-| 6 | `PUT /api/citas/{id}/completar` | Cambia el estado de la cita a "completada" | ✅ La cita de Laura Martínez con Carlos Ramírez (Corte de cabello) cambió a "completada" |
-| 7 | `PUT /api/citas/{id}/cancelar` | Cambia el estado de la cita a "cancelada" | ✅ La cita de Santiago Pérez con Julián Gómez (Afeitado clásico) cambió a "cancelada" |
-| 8 | `GET /api/citas/{id}` con un id que no existe | Responde 404 con un mensaje claro | ✅ Probado con un id inexistente: respondió 404 "Not Found" |
-| 9 | `GET /api/citas` (listar todas) | Devuelve las citas con los datos de cliente, barbero y servicio ya resueltos (no solo ids) | ✅ Confirmado: la respuesta trae los nombres completos (ej. "Laura Martinez", "Carlos Ramirez") gracias al DTO `CitaRespuestaDTO` |
+| # | Endpoint probado | Resultado esperado | Resultado obtenido |
+|---|-------------------|---------------------|----------------------|
+| 1 | `GET /api/servicios` | Lista de servicios de prueba | *(pendiente)* |
+| 2 | `POST /api/servicios` | Crea un servicio, responde 201 | *(pendiente)* |
+| 3 | `POST /api/citas` | Agenda una cita, responde 201, estado "pendiente" | *(pendiente)* |
+| 4 | `PUT /api/citas/{id}/confirmar` | Cambia el estado a "confirmada" | *(pendiente)* |
+| 5 | `POST /api/citas` con id de servicio inexistente | Responde 404 con mensaje claro | *(pendiente)* |
+
+## Seguridad (auditoría de octubre 2026)
+
+### Qué cambió y por qué
+
+| Antes | Ahora |
+|-------|-------|
+| La API no pedía autenticación: cualquiera podía leer, crear, modificar o borrar citas y cambiar precios. | Inicio de sesión (`/api/auth/login`) con la tabla `usuario`; sin sesión → **401**. |
+| No había permisos por rol. | Permisos según RNF11 y las historias de usuario (tabla abajo); sin permiso → **403** (o **404** si la cita es de otra persona). |
+| Contraseñas en texto plano. | BCrypt. Las contraseñas existentes en texto plano se **migran solas** al primer login correcto, sin pedir cambio. |
+| Sin protección CSRF. | Las peticiones que modifican datos exigen la cabecera `X-CSRF-Token` (la devuelve el login) y la cookie es `SameSite=Strict` + `HttpOnly`. |
+| Sin límite de intentos de login. | 5 fallos por correo (o 20 por IP) en 15 min → **429** temporal. |
+| Se podía agendar dos citas del mismo barbero a la misma hora, completar una cita cancelada, usar un cliente como barbero, etc. | Validación de cruces de horario (con bloqueo en BD para peticiones simultáneas), transiciones de estado, roles y estado activo. |
+| Errores previsibles terminaban en **500** y los mensajes de negocio no llegaban al cliente. | Respuestas JSON claras con `mensaje`, `campos` e `idCorrelacion`; nunca trazas ni SQL. |
+| Credenciales escritas en `application.properties`, `show-sql=true`. | Variables de entorno con los mismos valores por defecto; `show-sql` apagado. |
+
+### Permisos por rol
+
+| Operación | Administrador | Barbero | Cliente |
+|-----------|:---:|:---:|:---:|
+| Listar servicios activos / consultar servicio | ✔ | ✔ | ✔ |
+| `?todos=true`, crear, actualizar, desactivar servicio | ✔ | ✘ | ✘ |
+| `GET /api/citas` (todas) / eliminar cita | ✔ | ✘ | ✘ |
+| Consultar una cita | ✔ | si es suya | si es suya |
+| `/cliente/{id}` | ✔ | ✘ | solo su id |
+| `/barbero/{id}` | ✔ | solo su id | ✘ |
+| Agendar (`POST /api/citas`) | ✔ | ✘ | solo a su nombre |
+| Reprogramar (`PUT /api/citas/{id}`) | ✔ | ✘ | sus citas |
+| Confirmar / completar | ✔ | sus citas | ✘ |
+| Cancelar | ✔ | sus citas | sus citas |
+
+### Configuración por variables de entorno
+
+| Variable | Por defecto |
+|----------|-------------|
+| `SGB_DB_URL` | `jdbc:mysql://localhost:3307/sgb?...&serverTimezone=America/Bogota&connectTimeout=5000&socketTimeout=30000` |
+| `SGB_DB_USER` | `root` |
+| `SGB_DB_PASSWORD` | *(vacía)* |
+| `SGB_SHOW_SQL` | `false` |
+
+Recomendado: un usuario de base de datos propio con permisos mínimos (ejecutar
+en phpMyAdmin como `root`, cambiando la contraseña):
+
+```sql
+CREATE USER 'sgb_app'@'localhost' IDENTIFIED BY 'cambie-esta-clave';
+GRANT SELECT, INSERT, UPDATE, DELETE ON sgb.* TO 'sgb_app'@'localhost';
+```
+
+y luego, en NetBeans (Run → Set Project Configuration → Customize → Run →
+Environment) o en la terminal: `SGB_DB_USER=sgb_app`, `SGB_DB_PASSWORD=...`.
+
+### Pruebas automáticas
+
+`mvn test` ejecuta 27 pruebas JUnit (`src/test/java`) que **no se conectan a
+ninguna base de datos** (usan Mockito y MockMvc), así que es seguro correrlas
+en cualquier máquina: contraseñas, límite de intentos, transiciones de estado,
+reglas y permisos de `CitaService`, filtro de seguridad y manejo de errores.
+
+### Ejemplo con curl
+
+```bash
+curl -c c.txt -H "Content-Type: application/json" \
+     -d '{"correo":"usuario@correo.com","contrasena":"..."}' http://localhost:8081/api/auth/login
+# copie el csrfToken de la respuesta
+curl -b c.txt -H "Content-Type: application/json" -H "X-CSRF-Token: <csrfToken>" \
+     -d '{"idCliente":6,"idBarbero":4,"idServicio":1,"fechaHora":"2026-12-01T10:00:00"}' http://localhost:8081/api/citas
+```

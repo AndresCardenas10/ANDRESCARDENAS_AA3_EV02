@@ -60,6 +60,23 @@
 </section>
 
 <section>
+  <h2>Sesión</h2>
+  <p class="ayuda">
+    Desde la auditoría de seguridad la API exige iniciar sesión. Usa el correo y la
+    contraseña de un usuario de la tabla <code>usuario</code>. Lo que puedes hacer depende
+    de su rol: el Administrador gestiona todo; el Cliente agenda, ve, reprograma y cancela
+    sus propias citas; el Barbero ve su agenda y confirma, completa o cancela sus citas.
+  </p>
+  <div class="fila">
+    <div><label>Correo</label><input id="login-correo" type="email" autocomplete="username"></div>
+    <div><label>Contraseña</label><input id="login-contrasena" type="password" autocomplete="current-password"></div>
+  </div>
+  <button onclick="iniciarSesion()">Iniciar sesión</button>
+  <button class="secundario" onclick="cerrarSesion()">Cerrar sesión</button>
+  <p class="ayuda" id="sesion-actual">Sin sesión iniciada.</p>
+</section>
+
+<section>
   <h2>Módulo Servicio</h2>
 
   <button onclick="listarServicios(false)">Listar servicios activos</button>
@@ -131,12 +148,25 @@
     resultado.textContent = typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo, null, 2);
   }
 
+  // Token anti-CSRF que entrega el servidor al iniciar sesion. Se envia en
+  // la cabecera X-CSRF-Token en toda peticion que modifica datos.
+  let tokenCsrf = null;
+
+  function mostrarSesion(datos) {
+    const p = document.getElementById('sesion-actual');
+    p.textContent = datos ? ('Sesión iniciada: ' + datos.nombre + ' (' + datos.rol + ', id ' + datos.idUsuario + ')')
+                          : 'Sin sesión iniciada.';
+  }
+
   async function llamar(metodo, url, cuerpo) {
     try {
-      const opciones = { method: metodo, headers: {} };
+      const opciones = { method: metodo, headers: {}, credentials: 'same-origin' };
       if (cuerpo !== undefined) {
         opciones.headers['Content-Type'] = 'application/json';
         opciones.body = JSON.stringify(cuerpo);
+      }
+      if (metodo !== 'GET' && tokenCsrf) {
+        opciones.headers['X-CSRF-Token'] = tokenCsrf;
       }
       const resp = await fetch(url, opciones);
       let datos;
@@ -144,11 +174,30 @@
       try { datos = texto ? JSON.parse(texto) : '(sin contenido, esto es normal en Desactivar/Cancelar/Eliminar)'; }
       catch { datos = texto; }
       mostrar(resp.status, datos);
+      return { status: resp.status, datos: datos };
     } catch (err) {
       mostrar(0, 'No se pudo conectar con la API en ' + url +
         '. Verifica que el proyecto este corriendo (revisa la consola de NetBeans) y que la URL use el puerto 8081.\n\nDetalle tecnico: ' + err);
     }
   }
+
+  async function iniciarSesion() {
+    const r = await llamar('POST', '/api/auth/login', {
+      correo: document.getElementById('login-correo').value,
+      contrasena: document.getElementById('login-contrasena').value
+    });
+    document.getElementById('login-contrasena').value = '';
+    if (r && r.status === 200) { tokenCsrf = r.datos.csrfToken; mostrarSesion(r.datos); }
+  }
+  async function cerrarSesion() {
+    await llamar('POST', '/api/auth/logout');
+    tokenCsrf = null; mostrarSesion(null);
+  }
+  // Si ya habia una sesion abierta (por ejemplo, al recargar la pagina), recupera el token.
+  fetch('/api/auth/sesion', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null)
+    .then(d => { if (d) { tokenCsrf = d.csrfToken; mostrarSesion(d); } })
+    .catch(() => {});
 
   function listarServicios(todos) {
     llamar('GET', '/api/servicios' + (todos ? '?todos=true' : ''));

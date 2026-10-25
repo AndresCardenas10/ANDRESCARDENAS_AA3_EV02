@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Immutable;
 
 /**
  * Entidad de SOLO LECTURA para la tabla `usuario`, que ya existe y ya
@@ -22,8 +23,14 @@ import lombok.NoArgsConstructor;
  *
  * Por eso no se mapean columnas sensibles como contrasena_hash aqui:
  * solo los campos que el modulo de Cita necesita mostrar o validar.
+ * (El inicio de sesion lee el hash con una consulta aparte en
+ * UsuarioRepository, sin pasar por esta entidad.)
+ *
+ * @Immutable: Hibernate nunca generara un UPDATE para esta entidad, aunque
+ * algun codigo llegue a llamar a un setter por error.
  */
 @Entity
+@Immutable
 @Table(name = "usuario")
 @Data
 @NoArgsConstructor
