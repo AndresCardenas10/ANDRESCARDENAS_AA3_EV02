@@ -31,6 +31,7 @@
     margin: 0; font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
     background: var(--fondo); color: var(--texto); font-size: 15px;
   }
+  #barra-superior { position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
   header {
     background: var(--primario); color: #fff; padding: 14px 24px;
     display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
@@ -52,7 +53,7 @@
   @media (max-width: 960px) { main { grid-template-columns: 1fr; } }
   section {
     background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px;
-    padding: 16px 18px; margin-bottom: 18px; scroll-margin-top: 12px;
+    padding: 16px 18px; margin-bottom: 18px; scroll-margin-top: 112px;
   }
   section h2 { font-size: 1.02rem; margin: 0 0 4px; color: var(--primario); }
   .hu { display: inline-block; font-size: .72rem; font-weight: 700; color: #fff; background: var(--acento);
@@ -75,7 +76,7 @@
   button.exito { background: var(--ok); }
   button.mini { padding: 4px 9px; font-size: .75rem; background: #fff; color: var(--primario); border: 1px solid var(--primario); }
   button:hover { filter: brightness(1.1); }
-  #panel-resultado { position: sticky; top: 12px; align-self: start; max-height: calc(100vh - 24px); overflow: auto; }
+  #panel-resultado { position: sticky; top: 108px; align-self: start; max-height: calc(100vh - 120px); overflow: auto; }
   #estado { font-weight: 700; padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; background: #eee; }
   #estado.ok { color: var(--ok); background: var(--ok-fondo); }
   #estado.error { color: var(--error); background: var(--error-fondo); }
@@ -101,6 +102,7 @@
 </head>
 <body>
 
+<div id="barra-superior">
 <header>
   <h1>SGB · Sistema Gestión Barbería — <span>Módulo Servicio y Cita</span></h1>
   <div id="sesion-actual">Sin sesión iniciada</div>
@@ -113,6 +115,7 @@
   <a href="#sec-reprogramar">RF11 Reprogramar</a>
   <a href="#sec-estado">RF09 Confirmar / estados</a>
 </nav>
+</div>
 
 <main>
 <div id="columna-formularios">
