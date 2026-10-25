@@ -1,0 +1,2714 @@
+{
+  "info": {
+    "_postman_id": "ee867bd0-00b7-530c-8797-676ded13e1d6",
+    "name": "SGB — Módulo Servicio y Cita (AA3-EV02)",
+    "description": "Ejemplos de consumo y pruebas automatizadas de la API REST del módulo Servicio y Cita del Sistema Gestión Barbería (SGB). Evidencia GA7-220501096-AA3-EV02.\n\nRequisitos: la API corriendo en http://localhost:8081 y la base `sgb` importada desde sql/sgb_limpio.sql (usuarios de prueba con contraseña Prueba2026*).\n\nEjecutar las carpetas EN ORDEN (botón Run collection). Cada petición tiene pruebas automáticas en la pestaña Tests/Scripts.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Sesión (RNF04, RNF10)",
+      "item": [
+        {
+          "name": "1.1 Login con correo de formato inválido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Validación de texto: el correo debe tener usuario, @, dominio y extensión.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"cliente@sgb\",\n  \"contrasena\": \"{{contrasenaPruebas}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (dato invalido)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo correo\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"correo\");",
+                  "    pm.expect(r.campos[\"correo\"]).to.include(\"formato\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.2 Login con campos vacíos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Validación de campos obligatorios.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"\",\n  \"contrasena\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (datos obligatorios)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo correo\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"correo\");",
+                  "});",
+                  "pm.test(\"Indica el error en el campo contrasena\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"contrasena\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.3 Login con contraseña incorrecta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "RNF04: sin la contraseña correcta no se inicia sesión.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"admin@sgb.com\",\n  \"contrasena\": \"ClaveEquivocada1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 401 (credenciales invalidas)\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Trae un mensaje claro para el usuario\", () => pm.expect(pm.response.json().mensaje).to.be.a(\"string\").and.not.empty);",
+                  "pm.test(\"No entrega token\", () => pm.expect(pm.response.json()).to.not.have.property(\"csrfToken\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.4 Login como Administrador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Inicia sesión y guarda el token CSRF en la variable {{csrfToken}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"admin@sgb.com\",\n  \"contrasena\": \"{{contrasenaPruebas}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200 (sesion iniciada)\", () => pm.response.to.have.status(200));",
+                  "const datos = pm.response.json();",
+                  "pm.test(\"Entrega el token CSRF\", () => pm.expect(datos.csrfToken).to.be.a(\"string\").and.not.empty);",
+                  "pm.collectionVariables.set(\"csrfToken\", datos.csrfToken);",
+                  "pm.test(\"El rol es ADMINISTRADOR\", () => pm.expect(datos.rol).to.eql(\"ADMINISTRADOR\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Catálogo de servicios — Administrador",
+      "item": [
+        {
+          "name": "2.1 Listar servicios activos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200 (OK)\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Todos los servicios estan activos\", () => pm.response.json().forEach(s => pm.expect(s.activo).to.be.true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 Listar todos (incluye desactivados)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios?todos=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios"
+              ],
+              "query": [
+                {
+                  "key": "todos",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200 (OK)\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Incluye al menos un servicio desactivado\", () => pm.expect(pm.response.json().some(s => !s.activo)).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 Crear servicio válido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios"
+              ]
+            },
+            "description": "Nombre con letras, números y espacios; precio y duración válidos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{nombreServicio}}\",\n  \"descripcion\": \"Corte moderno con maquina y tijera\",\n  \"precio\": 25000,\n  \"duracionMin\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"nombreServicio\", \"Corte degradado \" + Math.floor(Math.random() * 1000));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 201 (creado)\", () => pm.response.to.have.status(201));",
+                  "const s = pm.response.json();",
+                  "pm.collectionVariables.set(\"idServicioNuevo\", s.idServicio);",
+                  "pm.test(\"Queda activo con el precio enviado\", () => { pm.expect(s.activo).to.be.true; pm.expect(Number(s.precio)).to.eql(25000); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.4 Consultar el servicio creado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios/{{idServicioNuevo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios",
+                "{{idServicioNuevo}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200 (OK)\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Es el servicio creado\", () => pm.expect(pm.response.json().idServicio).to.eql(Number(pm.collectionVariables.get(\"idServicioNuevo\"))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.5 Actualizar el servicio (precio y descripción)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios/{{idServicioNuevo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios",
+                "{{idServicioNuevo}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{nombreServicio}}\",\n  \"descripcion\": \"Corte degradado con diseño y lavado\",\n  \"precio\": 28000.50,\n  \"duracionMin\": 40\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200 (OK)\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Guarda el nuevo precio con decimales\", () => pm.expect(Number(pm.response.json().precio)).to.eql(28000.5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.6 Nombre con caracteres especiales",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios"
+              ]
+            },
+            "description": "Caracteres especiales: el nombre solo admite letras, números, espacios y . , ( ) -",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Corte@Premium#1\",\n  \"descripcion\": \"Corte moderno con maquina y tijera\",\n  \"precio\": 25000,\n  \"duracionMin\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (dato invalido)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo nombre\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"nombre\");",
+                  "    pm.expect(r.campos[\"nombre\"]).to.include(\"solo admite\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.7 Nombre demasiado corto (2 caracteres)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios"
+              ]
+            },
+            "description": "Longitud mínima: 3 caracteres.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Co\",\n  \"descripcion\": \"Corte moderno con maquina y tijera\",\n  \"precio\": 25000,\n  \"duracionMin\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (dato invalido)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo nombre\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"nombre\");",
+                  "    pm.expect(r.campos[\"nombre\"]).to.include(\"entre 3 y 100\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.8 Nombre demasiado largo (101 caracteres)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios"
+              ]
+            },
+            "description": "Longitud máxima: 100 caracteres.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{nombreLargo}}\",\n  \"descripcion\": \"Corte moderno con maquina y tijera\",\n  \"precio\": 25000,\n  \"duracionMin\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"nombreLargo\", \"a\".repeat(101));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (dato invalido)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo nombre\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"nombre\");",
+                  "    pm.expect(r.campos[\"nombre\"]).to.include(\"entre 3 y 100\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.9 Precio con letras",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios"
+              ]
+            },
+            "description": "Validación numérica.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{nombreServicio}}\",\n  \"descripcion\": \"Corte moderno con maquina y tijera\",\n  \"precio\": \"veinte mil\",\n  \"duracionMin\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (formato incorrecto)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo precio\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"precio\");",
+                  "    pm.expect(r.campos[\"precio\"]).to.include(\"numero\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.10 Precio negativo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{nombreServicio}}\",\n  \"descripcion\": \"Corte moderno con maquina y tijera\",\n  \"precio\": -5000,\n  \"duracionMin\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (dato invalido)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo precio\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"precio\");",
+                  "    pm.expect(r.campos[\"precio\"]).to.include(\"mayor que cero\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.11 Precio con 3 decimales",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{nombreServicio}}\",\n  \"descripcion\": \"Corte moderno con maquina y tijera\",\n  \"precio\": 20000.555,\n  \"duracionMin\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (dato invalido)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo precio\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"precio\");",
+                  "    pm.expect(r.campos[\"precio\"]).to.include(\"2 decimales\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.12 Duración con decimales",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{nombreServicio}}\",\n  \"descripcion\": \"Corte moderno con maquina y tijera\",\n  \"precio\": 25000,\n  \"duracionMin\": 12.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (formato incorrecto)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo duracionMin\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"duracionMin\");",
+                  "    pm.expect(r.campos[\"duracionMin\"]).to.include(\"entero\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.13 Duración mayor a 24 horas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{nombreServicio}}\",\n  \"descripcion\": \"Corte moderno con maquina y tijera\",\n  \"precio\": 25000,\n  \"duracionMin\": 1441\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (dato invalido)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo duracionMin\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"duracionMin\");",
+                  "    pm.expect(r.campos[\"duracionMin\"]).to.include(\"1440\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.14 Descripción con código HTML",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios"
+              ]
+            },
+            "description": "Caracteres especiales: se rechazan < > { } para evitar que se guarde código.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{nombreServicio}}\",\n  \"descripcion\": \"<script>alert('hola')</script>\",\n  \"precio\": 25000,\n  \"duracionMin\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (dato invalido)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo descripcion\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"descripcion\");",
+                  "    pm.expect(r.campos[\"descripcion\"]).to.include(\"< > { }\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.15 Consultar servicio inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios/99999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios",
+                "99999"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 404 (no existe)\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Trae un mensaje claro para el usuario\", () => pm.expect(pm.response.json().mensaje).to.be.a(\"string\").and.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.16 Id de servicio con letras en la URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios",
+                "abc"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (formato invalido)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Trae un mensaje claro para el usuario\", () => pm.expect(pm.response.json().mensaje).to.be.a(\"string\").and.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.17 Desactivar el servicio creado",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios/{{idServicioNuevo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios",
+                "{{idServicioNuevo}}"
+              ]
+            },
+            "description": "Baja lógica: el servicio queda con activo = false."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 204 (sin contenido)\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Citas — Cliente (RF03, RF11, RNF10, RNF11)",
+      "item": [
+        {
+          "name": "3.1 Login como Cliente (María López, id 4)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"cliente@sgb.com\",\n  \"contrasena\": \"{{contrasenaPruebas}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200 (sesion iniciada)\", () => pm.response.to.have.status(200));",
+                  "const datos = pm.response.json();",
+                  "pm.test(\"Entrega el token CSRF\", () => pm.expect(datos.csrfToken).to.be.a(\"string\").and.not.empty);",
+                  "pm.collectionVariables.set(\"csrfToken\", datos.csrfToken);",
+                  "pm.test(\"El rol es CLIENTE\", () => pm.expect(datos.rol).to.eql(\"CLIENTE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.2 RF03 — Agendar cita válida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": "RF03: el cliente reserva una cita sin llamar ni ir al local.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 4,\n  \"idBarbero\": 2,\n  \"idServicio\": 1,\n  \"fechaHora\": \"{{fechaCita}}\",\n  \"notas\": \"Cita creada desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Fecha futura aleatoria (entre 30 y 330 dias, de 8:00 a 17:00) para que la",
+                  "// coleccion se pueda ejecutar varias veces sin chocar con citas anteriores.",
+                  "const dos = n => String(n).padStart(2, \"0\");",
+                  "const formato = d => d.getFullYear() + \"-\" + dos(d.getMonth() + 1) + \"-\" + dos(d.getDate()) + \"T\" + dos(d.getHours()) + \":00:00\";",
+                  "const base = new Date();",
+                  "base.setDate(base.getDate() + 30 + Math.floor(Math.random() * 300));",
+                  "base.setHours(8 + Math.floor(Math.random() * 9), 0, 0, 0);",
+                  "pm.collectionVariables.set(\"fechaCita\", formato(base));",
+                  "const nueva = new Date(base.getTime());",
+                  "nueva.setDate(nueva.getDate() + 1);",
+                  "pm.collectionVariables.set(\"fechaReprogramada\", formato(nueva));",
+                  "const ayer = new Date();",
+                  "ayer.setDate(ayer.getDate() - 1);",
+                  "ayer.setHours(10, 0, 0, 0);",
+                  "pm.collectionVariables.set(\"fechaPasada\", formato(ayer));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 201 (creada)\", () => pm.response.to.have.status(201));",
+                  "const c = pm.response.json();",
+                  "pm.collectionVariables.set(\"idCitaNueva\", c.idCita);",
+                  "pm.test(\"Queda en estado pendiente\", () => pm.expect(c.estado).to.eql(\"pendiente\"));",
+                  "pm.test(\"Guarda la fecha enviada\", () => pm.expect(c.fechaHora.slice(0,16)).to.eql(pm.collectionVariables.get(\"fechaCita\").slice(0,16)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.3 Fecha en el pasado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 4,\n  \"idBarbero\": 2,\n  \"idServicio\": 1,\n  \"fechaHora\": \"{{fechaPasada}}\",\n  \"notas\": \"Cita creada desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (regla de negocio)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Explica que la fecha no puede ser pasada\", () => pm.expect(pm.response.json().mensaje).to.include(\"pasado\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.4 Fecha con formato inválido (DD/MM/AAAA)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 4,\n  \"idBarbero\": 2,\n  \"idServicio\": 1,\n  \"fechaHora\": \"31/12/2026 10:00\",\n  \"notas\": \"Cita creada desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (formato incorrecto)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo fechaHora\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"fechaHora\");",
+                  "    pm.expect(r.campos[\"fechaHora\"]).to.include(\"AAAA-MM-DD\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.5 Fecha que no existe (30 de febrero)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 4,\n  \"idBarbero\": 2,\n  \"idServicio\": 1,\n  \"fechaHora\": \"2027-02-30T10:00:00\",\n  \"notas\": \"Cita creada desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (formato incorrecto)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo fechaHora\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"fechaHora\");",
+                  "    pm.expect(r.campos[\"fechaHora\"]).to.include(\"AAAA-MM-DD\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.6 Campos obligatorios vacíos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notas\": \"sin datos\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (datos obligatorios)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo idCliente\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"idCliente\");",
+                  "});",
+                  "pm.test(\"Indica el error en el campo idBarbero\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"idBarbero\");",
+                  "});",
+                  "pm.test(\"Indica el error en el campo idServicio\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"idServicio\");",
+                  "});",
+                  "pm.test(\"Indica el error en el campo fechaHora\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"fechaHora\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.7 Id de servicio con letras",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 4,\n  \"idBarbero\": 2,\n  \"idServicio\": \"uno\",\n  \"fechaHora\": \"{{fechaCita}}\",\n  \"notas\": \"Cita creada desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (formato incorrecto)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo idServicio\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"idServicio\");",
+                  "    pm.expect(r.campos[\"idServicio\"]).to.include(\"entero\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.8 Servicio que no existe",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 4,\n  \"idBarbero\": 2,\n  \"idServicio\": 99999,\n  \"fechaHora\": \"{{fechaCita}}\",\n  \"notas\": \"Cita creada desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 404 (no existe)\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Trae un mensaje claro para el usuario\", () => pm.expect(pm.response.json().mensaje).to.be.a(\"string\").and.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.9 Servicio desactivado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 4,\n  \"idBarbero\": 2,\n  \"idServicio\": 5,\n  \"fechaHora\": \"{{fechaCita}}\",\n  \"notas\": \"Cita creada desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (regla de negocio)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Explica que el servicio esta desactivado\", () => pm.expect(pm.response.json().mensaje).to.include(\"desactivado\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.10 Barbero inactivo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 4,\n  \"idBarbero\": 6,\n  \"idServicio\": 1,\n  \"fechaHora\": \"{{fechaCita}}\",\n  \"notas\": \"Cita creada desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (regla de negocio)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Explica que el barbero esta inactivo\", () => pm.expect(pm.response.json().mensaje).to.include(\"inactivo\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.11 Asignar como barbero a un cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 4,\n  \"idBarbero\": 5,\n  \"idServicio\": 1,\n  \"fechaHora\": \"{{fechaCita}}\",\n  \"notas\": \"Cita creada desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (regla de negocio)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Explica que no tiene rol de Barbero\", () => pm.expect(pm.response.json().mensaje).to.include(\"Barbero\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.12 Notas de más de 1000 caracteres",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 4,\n  \"idBarbero\": 2,\n  \"idServicio\": 1,\n  \"fechaHora\": \"{{fechaCita}}\",\n  \"notas\": \"{{notasLargas}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"notasLargas\", \"x\".repeat(1001));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (dato invalido)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo notas\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"notas\");",
+                  "    pm.expect(r.campos[\"notas\"]).to.include(\"1000\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.13 Notas con caracteres < >",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 4,\n  \"idBarbero\": 2,\n  \"idServicio\": 1,\n  \"fechaHora\": \"{{fechaCita}}\",\n  \"notas\": \"<b>urgente</b>\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400 (dato invalido)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica el error en el campo notas\", () => {",
+                  "    const r = pm.response.json();",
+                  "    pm.expect(r.campos, \"lista de campos con error\").to.have.property(\"notas\");",
+                  "    pm.expect(r.campos[\"notas\"]).to.include(\"< > { }\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.14 RNF11 — Agendar a nombre de otro cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 5,\n  \"idBarbero\": 2,\n  \"idServicio\": 1,\n  \"fechaHora\": \"{{fechaCita}}\",\n  \"notas\": \"Cita creada desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 403 (sin permiso)\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Trae un mensaje claro para el usuario\", () => pm.expect(pm.response.json().mensaje).to.be.a(\"string\").and.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.15 Historial del cliente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/cliente/4",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "cliente",
+                "4"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200 (OK)\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Incluye la cita agendada\", () => pm.expect(pm.response.json().map(c => c.idCita)).to.include(Number(pm.collectionVariables.get(\"idCitaNueva\"))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.16 RNF11 — Ver el historial de otro cliente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/cliente/5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "cliente",
+                "5"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 403 (sin permiso)\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.17 RF11 — Reprogramar la cita",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{idCitaNueva}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{idCitaNueva}}"
+              ]
+            },
+            "description": "RF11: el cliente cambia la fecha y hora de su cita.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 4,\n  \"idBarbero\": 2,\n  \"idServicio\": 1,\n  \"fechaHora\": \"{{fechaReprogramada}}\",\n  \"notas\": \"Reprogramada por un imprevisto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200 (OK)\", () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json();",
+                  "pm.test(\"La cita tiene la nueva fecha\", () => pm.expect(c.fechaHora.slice(0,16)).to.eql(pm.collectionVariables.get(\"fechaReprogramada\").slice(0,16)));",
+                  "pm.test(\"Sigue pendiente\", () => pm.expect(c.estado).to.eql(\"pendiente\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.18 RNF11 — Cliente intenta listar todas las citas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 403 (sin permiso)\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.19 RNF04 — Agendar sin el token CSRF",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": "La cabecera X-CSRF-Token está desactivada a propósito en esta petición.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 4,\n  \"idBarbero\": 2,\n  \"idServicio\": 1,\n  \"fechaHora\": \"{{fechaCita}}\",\n  \"notas\": \"Cita creada desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 403 (sin token CSRF)\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Trae un mensaje claro para el usuario\", () => pm.expect(pm.response.json().mensaje).to.be.a(\"string\").and.not.empty);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Cruce de horario",
+      "item": [
+        {
+          "name": "4.1 Login como Cliente 2 (Sofía Torres, id 5)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"cliente2@sgb.com\",\n  \"contrasena\": \"{{contrasenaPruebas}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200 (sesion iniciada)\", () => pm.response.to.have.status(200));",
+                  "const datos = pm.response.json();",
+                  "pm.test(\"Entrega el token CSRF\", () => pm.expect(datos.csrfToken).to.be.a(\"string\").and.not.empty);",
+                  "pm.collectionVariables.set(\"csrfToken\", datos.csrfToken);",
+                  "pm.test(\"El rol es CLIENTE\", () => pm.expect(datos.rol).to.eql(\"CLIENTE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.2 Agendar con el mismo barbero a la misma hora",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": "Validación de fecha: el barbero no puede tener dos citas que se crucen.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 5,\n  \"idBarbero\": 2,\n  \"idServicio\": 1,\n  \"fechaHora\": \"{{fechaReprogramada}}\",\n  \"notas\": \"Intento de cruce\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 409 (conflicto)\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Explica que el barbero ya tiene una cita\", () => pm.expect(pm.response.json().mensaje).to.include(\"ya tiene una cita\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Barbero (RF08, RF09)",
+      "item": [
+        {
+          "name": "5.1 Login como Barbero (Juan Pérez, id 2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"barbero@sgb.com\",\n  \"contrasena\": \"{{contrasenaPruebas}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200 (sesion iniciada)\", () => pm.response.to.have.status(200));",
+                  "const datos = pm.response.json();",
+                  "pm.test(\"Entrega el token CSRF\", () => pm.expect(datos.csrfToken).to.be.a(\"string\").and.not.empty);",
+                  "pm.collectionVariables.set(\"csrfToken\", datos.csrfToken);",
+                  "pm.test(\"El rol es BARBERO\", () => pm.expect(datos.rol).to.eql(\"BARBERO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.2 RF08 — Agenda del barbero",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/barbero/2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "barbero",
+                "2"
+              ]
+            },
+            "description": "RF08: el barbero ve las citas programadas para organizar su jornada."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200 (OK)\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Incluye la cita del cliente\", () => pm.expect(pm.response.json().map(c => c.idCita)).to.include(Number(pm.collectionVariables.get(\"idCitaNueva\"))));",
+                  "pm.test(\"Todas las citas son de este barbero\", () => pm.response.json().forEach(c => pm.expect(c.idBarbero).to.eql(2)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.3 RNF11 — Agenda de otro barbero",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/barbero/3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "barbero",
+                "3"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 403 (sin permiso)\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.4 RF09 — Confirmar la cita",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{idCitaNueva}}/confirmar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{idCitaNueva}}",
+                "confirmar"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200 (OK)\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Queda confirmada\", () => pm.expect(pm.response.json().estado).to.eql(\"confirmada\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.5 Completar la cita",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{idCitaNueva}}/completar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{idCitaNueva}}",
+                "completar"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200 (OK)\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Queda completada\", () => pm.expect(pm.response.json().estado).to.eql(\"completada\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.6 Confirmar una cita ya completada",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{idCitaNueva}}/confirmar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{idCitaNueva}}",
+                "confirmar"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 409 (transicion invalida)\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Trae un mensaje claro para el usuario\", () => pm.expect(pm.response.json().mensaje).to.be.a(\"string\").and.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.7 RNF11 — El barbero intenta agendar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 4,\n  \"idBarbero\": 2,\n  \"idServicio\": 1,\n  \"fechaHora\": \"{{fechaCita}}\",\n  \"notas\": \"Cita creada desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Fecha futura aleatoria (entre 30 y 330 dias, de 8:00 a 17:00) para que la",
+                  "// coleccion se pueda ejecutar varias veces sin chocar con citas anteriores.",
+                  "const dos = n => String(n).padStart(2, \"0\");",
+                  "const formato = d => d.getFullYear() + \"-\" + dos(d.getMonth() + 1) + \"-\" + dos(d.getDate()) + \"T\" + dos(d.getHours()) + \":00:00\";",
+                  "const base = new Date();",
+                  "base.setDate(base.getDate() + 30 + Math.floor(Math.random() * 300));",
+                  "base.setHours(8 + Math.floor(Math.random() * 9), 0, 0, 0);",
+                  "pm.collectionVariables.set(\"fechaCita\", formato(base));",
+                  "const nueva = new Date(base.getTime());",
+                  "nueva.setDate(nueva.getDate() + 1);",
+                  "pm.collectionVariables.set(\"fechaReprogramada\", formato(nueva));",
+                  "const ayer = new Date();",
+                  "ayer.setDate(ayer.getDate() - 1);",
+                  "ayer.setHours(10, 0, 0, 0);",
+                  "pm.collectionVariables.set(\"fechaPasada\", formato(ayer));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 403 (sin permiso)\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Administrador y cierre de sesión",
+      "item": [
+        {
+          "name": "6.1 Login como Administrador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"admin@sgb.com\",\n  \"contrasena\": \"{{contrasenaPruebas}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200 (sesion iniciada)\", () => pm.response.to.have.status(200));",
+                  "const datos = pm.response.json();",
+                  "pm.test(\"Entrega el token CSRF\", () => pm.expect(datos.csrfToken).to.be.a(\"string\").and.not.empty);",
+                  "pm.collectionVariables.set(\"csrfToken\", datos.csrfToken);",
+                  "pm.test(\"El rol es ADMINISTRADOR\", () => pm.expect(datos.rol).to.eql(\"ADMINISTRADOR\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.2 Listar todas las citas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200 (OK)\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Devuelve una lista\", () => pm.expect(pm.response.json()).to.be.an(\"array\").that.is.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.3 Reprogramar una cita completada",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{idCitaNueva}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{idCitaNueva}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCliente\": 4,\n  \"idBarbero\": 2,\n  \"idServicio\": 1,\n  \"fechaHora\": \"{{fechaReprogramada}}\",\n  \"notas\": \"Cita creada desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 409 (conflicto)\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Explica que solo se reprograman citas activas\", () => pm.expect(pm.response.json().mensaje).to.include(\"pendientes o confirmadas\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.4 Eliminar la cita",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{idCitaNueva}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{idCitaNueva}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 204 (sin contenido)\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.5 Consultar la cita eliminada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/citas/{{idCitaNueva}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "citas",
+                "{{idCitaNueva}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 404 (no existe)\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.6 Cerrar sesión",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Cierra la sesion\", () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.7 RNF04 — Consultar sin sesión",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/servicios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "servicios"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 401 (no autenticado)\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Trae un mensaje claro para el usuario\", () => pm.expect(pm.response.json().mensaje).to.be.a(\"string\").and.not.empty);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "contrasenaPruebas",
+      "value": "Prueba2026*"
+    },
+    {
+      "key": "csrfToken",
+      "value": ""
+    },
+    {
+      "key": "idServicioNuevo",
+      "value": ""
+    },
+    {
+      "key": "idCitaNueva",
+      "value": ""
+    },
+    {
+      "key": "nombreServicio",
+      "value": ""
+    },
+    {
+      "key": "fechaCita",
+      "value": ""
+    },
+    {
+      "key": "fechaReprogramada",
+      "value": ""
+    },
+    {
+      "key": "fechaPasada",
+      "value": ""
+    },
+    {
+      "key": "nombreLargo",
+      "value": ""
+    },
+    {
+      "key": "notasLargas",
+      "value": ""
+    }
+  ]
+}
