@@ -1,11 +1,18 @@
 # Módulos Servicio y Cita — API REST (SGB)
-Evidencia **GA7-220501096-AA3-EV01** — Codificación de módulos del software
+Evidencia **GA7-220501096-AA3-EV02** — Módulos de software codificados y probados
 
-> Nota sobre la referencia de esta evidencia: este README corresponde a
-> **AA3-EV01**. (En la Evidencia anterior, AA2-EV02, el instructor señaló
-> que en parte de la documentación seguía apareciendo "EV01" por error;
-> aquí se revisó con cuidado que la numeración fuera consistente en todo
-> el documento.)
+Repositorio: https://github.com/AndresCardenas10/ANDRESCARDENAS_AA3_EV02
+
+> **Historial de este proyecto.** El código se entregó por primera vez en la
+> Evidencia **GA7-220501096-AA3-EV01** (repositorio
+> `ANDRESCARDENAS_AA3_EV01`). En esta evidencia (**AA3-EV02**) se conserva ese
+> historial de commits y se agregan: la auditoría de seguridad (inicio de
+> sesión, roles, CSRF), validaciones de caracteres especiales, longitudes y
+> formatos, el panel web completo del módulo, una base de datos limpia de
+> pruebas, **43 pruebas automatizadas JUnit** y una **colección de Postman con
+> 56 peticiones y 117 pruebas automáticas**, que atienden la recomendación del
+> instructor en AA3-EV01: *"incorpora pruebas automatizadas y ejemplos de
+> consumo de los endpoints"*.
 
 ## Qué hace este proyecto
 
@@ -32,8 +39,9 @@ proyectos comparten la misma base de datos MySQL (`sgb`).
 
 Las entidades `Servicio` y `Cita` están mapeadas **exactamente** a las
 tablas `servicio` y `cita` que ya existen en la base de datos real `sgb`
-(ver `sql/sgb.sql` en la Evidencia AA2-EV02, que es un volcado literal de
-esa base de datos):
+(la estructura es la del volcado `sgb.sql` de la Evidencia AA2-EV02; en esta
+evidencia se entrega `sql/sgb_limpio.sql`, con la misma estructura y datos de
+prueba en lugar de los datos reales):
 
 - **`servicio`**: `id_servicio, nombre, descripcion, precio, duracion_min, activo`
 - **`cita`**: `id_cita, id_cliente, id_barbero, id_servicio, fecha_hora, estado, expira_en, notas, creado_en`
@@ -58,7 +66,9 @@ solo se conecta a la base de datos que ya existe.
 sgb-servicio-cita-api/
 ├── pom.xml
 ├── README.md                          (este archivo)
-├── ENLACE_REPOSITORIO.txt
+├── sql/sgb_limpio.sql                 (base de datos de prueba, sin datos reales)
+├── postman/SGB_Servicio_Cita_AA3_EV02.postman_collection.json
+├── src/test/java/...                  (43 pruebas JUnit)
 └── src/main/
     ├── java/com/sgb/
     │   ├── SgbServicioCitaApiApplication.java   (clase principal)
@@ -74,13 +84,12 @@ sgb-servicio-cita-api/
     │   ├── negocio/
     │   │   ├── ServicioService.java
     │   │   └── CitaService.java
-    │   ├── dto/
-    │   │   ├── CitaSolicitudDTO.java
-    │   │   └── CitaRespuestaDTO.java
-    │   └── web/
-    │       ├── ServicioController.java
-    │       └── CitaController.java
-    └── resources/application.properties
+    │   ├── dto/                       (datos de entrada/salida + ValidacionesTexto)
+    │   ├── seguridad/                 (login, contraseñas BCrypt, roles, intentos)
+    │   └── web/                       (controladores REST, filtro de seguridad, errores)
+    └── resources/
+        ├── application.properties
+        └── static/probador.html       (panel web del módulo)
 ```
 
 **Convenciones de codificación aplicadas** (las mismas de la Evidencia
@@ -129,21 +138,38 @@ AA2-EV01/EV02): clases en `PascalCase`, métodos y variables en
 
 ## Cómo ejecutarlo (resumen técnico)
 
-La guía completa, paso a paso y sin dar por hecho ningún conocimiento
-previo, está en el documento de la Etapa 4 de esta evidencia. En resumen:
+1. XAMPP con MySQL/MariaDB en el puerto **3307**.
+2. Importar `sql/sgb_limpio.sql` en phpMyAdmin (pestaña **Importar**).
+   **Ojo:** el script borra y vuelve a crear la base `sgb`; exporte antes una
+   copia de la base actual si la necesita.
+3. Abrir esta carpeta como proyecto Maven en NetBeans (JDK 17 o superior) y
+   ejecutar `SgbServicioCitaApiApplication` (o `mvn spring-boot:run`).
+4. Abrir `http://localhost:8081/probador.html` e iniciar sesión con un
+   usuario de prueba.
 
-1. Tener XAMPP con MySQL corriendo y la base `sgb` ya importada (la misma
-   que se usa en la Evidencia AA2-EV02).
-2. Abrir esta carpeta como proyecto Maven en NetBeans (u otro IDE).
-3. Ejecutar la clase `SgbServicioCitaApiApplication`.
-4. Abrir `http://localhost:8081/probador.html` en el navegador: es una
-   página de prueba incluida en el proyecto (`src/main/resources/static/probador.html`)
-   con botones y formularios para probar los endpoints de Servicio y
-   Cita (crear, listar, cambiar estado, etc.) sin instalar Postman ni
-   nada adicional. **Primero inicia sesión** en la sección "Sesión" con el
-   correo y la contraseña de un usuario de la tabla `usuario`.
+### Usuarios de prueba (contraseña de todos: `Prueba2026*`)
 
-La API queda disponible en `http://localhost:8081`.
+| id | Correo | Nombre | Rol |
+|----|--------|--------|-----|
+| 1 | admin@sgb.com | Laura Gómez | Administrador |
+| 2 | barbero@sgb.com | Juan Pérez | Barbero |
+| 3 | barbero2@sgb.com | Diego Ramírez | Barbero |
+| 4 | cliente@sgb.com | María López | Cliente |
+| 5 | cliente2@sgb.com | Sofía Torres | Cliente |
+| 6 | inactivo@sgb.com | Carlos Ruiz | Barbero **inactivo** (para probar validaciones) |
+
+Servicios: 1 a 4 activos; el **5 (Mascarilla facial) está desactivado** a
+propósito. Las citas de ejemplo se crean con fechas relativas al día de la
+importación.
+
+### Panel web del módulo (`probador.html`)
+
+Cada sección corresponde a una historia de usuario: **RF03** agendar,
+**RF08** agenda del barbero / historial del cliente, **RF11** reprogramar,
+**RF09** confirmar (y completar, cancelar, eliminar), además del catálogo de
+servicios. El panel muestra, junto a cada acción, la **petición enviada** y la
+**respuesta JSON** de la API, y no bloquea datos inválidos para que se vea la
+validación que hace el servidor.
 
 ## Decisiones de diseño (y por qué)
 
@@ -170,19 +196,97 @@ La API queda disponible en `http://localhost:8081`.
 
 ## Pruebas ejecutadas y resultados
 
-> Esta sección se completa después de ejecutar la guía de pruebas
-> (Etapa 4 de esta evidencia) y se actualiza con los resultados reales
-> antes de la entrega final — así se corrige, además, la observación
-> puntual del instructor en la Evidencia AA2-EV02 sobre documentar en el
-> README las pruebas ejecutadas y sus resultados.
+Ejecutadas el 25 de octubre de 2026 contra MariaDB con `sql/sgb_limpio.sql`.
 
-| # | Endpoint probado | Resultado esperado | Resultado obtenido |
-|---|-------------------|---------------------|----------------------|
-| 1 | `GET /api/servicios` | Lista de servicios de prueba | *(pendiente)* |
-| 2 | `POST /api/servicios` | Crea un servicio, responde 201 | *(pendiente)* |
-| 3 | `POST /api/citas` | Agenda una cita, responde 201, estado "pendiente" | *(pendiente)* |
-| 4 | `PUT /api/citas/{id}/confirmar` | Cambia el estado a "confirmada" | *(pendiente)* |
-| 5 | `POST /api/citas` con id de servicio inexistente | Responde 404 con mensaje claro | *(pendiente)* |
+| Tipo | Herramienta | Resultado |
+|------|-------------|-----------|
+| Pruebas unitarias y de controlador | JUnit 5 + Mockito + MockMvc (`mvn test`) | **43 de 43 aprobadas** |
+| Pruebas de la API funcionando | Postman / Newman (`postman/…collection.json`) | **56 peticiones, 117 de 117 aserciones aprobadas** |
+| Pruebas desde la interfaz | Panel `probador.html` | 20 pantallazos de historias + 25 de validaciones (documento Word) |
+
+| # | Prueba | Esperado | Obtenido |
+|---|--------|----------|----------|
+| 1 | `POST /api/auth/login` con contraseña incorrecta | 401 | 401 ✔ |
+| 2 | `GET /api/servicios` (servicios activos) | 200, solo activos | 200 ✔ |
+| 3 | `POST /api/servicios` válido | 201, activo | 201 ✔ |
+| 4 | Nombre de servicio `Corte@Premium#1` | 400, campo `nombre` | 400 ✔ |
+| 5 | Precio `"veinte mil"` / `-5000` / `20000.555` | 400, campo `precio` | 400 ✔ |
+| 6 | Duración `12.5` / `1441` | 400, campo `duracionMin` | 400 ✔ |
+| 7 | Descripción `<script>…</script>` | 400, campo `descripcion` | 400 ✔ |
+| 8 | **RF03** `POST /api/citas` válido (cliente) | 201, `pendiente` | 201 ✔ |
+| 9 | Fecha en el pasado | 400 | 400 ✔ |
+| 10 | Fecha `31/12/2026 10:00` / `2027-02-30T10:00` | 400, campo `fechaHora` | 400 ✔ |
+| 11 | Servicio inexistente / desactivado / barbero inactivo | 404 / 400 / 400 | ✔ |
+| 12 | Notas de 1001 caracteres / con `< >` | 400, campo `notas` | 400 ✔ |
+| 13 | Cliente agenda a nombre de otro | 403 | 403 ✔ |
+| 14 | **RF11** `PUT /api/citas/{id}` (reprogramar) | 200, nueva fecha | 200 ✔ |
+| 15 | Otra cita del mismo barbero a la misma hora | 409 | 409 ✔ |
+| 16 | **RF08** `GET /api/citas/barbero/2` (barbero) | 200, solo sus citas | 200 ✔ |
+| 17 | **RF09** `PUT /api/citas/{id}/confirmar` | 200, `confirmada` | 200 ✔ |
+| 18 | Confirmar / reprogramar una cita completada | 409 | 409 ✔ |
+| 19 | Escritura sin cabecera `X-CSRF-Token` | 403 | 403 ✔ |
+| 20 | Cualquier endpoint sin sesión | 401 | 401 ✔ |
+
+## Ejemplos de consumo de la API
+
+La colección `postman/SGB_Servicio_Cita_AA3_EV02.postman_collection.json` trae
+un ejemplo de **cada endpoint**, con casos correctos y de error, y pruebas
+automáticas en cada petición. Importarla en Postman (**Import**) y ejecutarla
+con **Run collection** (en orden). También se puede correr por consola:
+
+```bash
+npx newman run postman/SGB_Servicio_Cita_AA3_EV02.postman_collection.json
+```
+
+**1. Iniciar sesión**
+
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{ "correo": "cliente@sgb.com", "contrasena": "Prueba2026*" }
+```
+```json
+200 OK
+{ "idUsuario": 4, "nombre": "María López", "rol": "CLIENTE", "csrfToken": "sYu0z0…" }
+```
+
+**2. Agendar una cita (RF03)** — la cookie de sesión la envía el navegador o
+Postman; el token va en la cabecera.
+
+```http
+POST /api/citas
+Content-Type: application/json
+X-CSRF-Token: sYu0z0…
+
+{ "idCliente": 4, "idBarbero": 2, "idServicio": 1, "fechaHora": "2026-12-01T10:00:00", "notas": "Primera vez" }
+```
+```json
+201 Created
+{ "idCita": 4, "cliente": "María López", "barbero": "Juan Pérez", "servicio": "Corte de cabello",
+  "precioServicio": 20000, "fechaHora": "2026-12-01T10:00:00", "estado": "pendiente", "notas": "Primera vez", … }
+```
+
+**3. Error de validación** (fecha mal escrita)
+
+```json
+400 Bad Request
+{ "status": 400, "mensaje": "Hay datos con formato incorrecto en la peticion.",
+  "campos": { "fechaHora": "El campo 'fechaHora' debe ser una fecha y hora valida con el formato AAAA-MM-DDTHH:MM (ejemplo: 2026-12-01T10:30)" },
+  "path": "/api/citas", "idCorrelacion": "b70475ef-…" }
+```
+
+### Validaciones implementadas
+
+| Campo | Regla | Mensaje |
+|-------|-------|---------|
+| `nombre` (servicio) | obligatorio, 3–100 caracteres, solo letras, números, espacios y `. , ( ) -` | por campo |
+| `descripcion`, `notas` | máx. 1000 caracteres, sin `< > { }` | por campo |
+| `precio` | número > 0, máx. 6 enteros y 2 decimales | por campo |
+| `duracionMin` | entero (sin decimales) entre 1 y 1440 | por campo |
+| `idCliente`, `idBarbero`, `idServicio` | obligatorios, enteros positivos | por campo |
+| `fechaHora` | obligatoria, formato `AAAA-MM-DDTHH:MM`, fecha real, no en el pasado, sin cruce con otra cita del barbero | por campo o mensaje de negocio |
+| `correo` (login) | obligatorio, formato `nombre@dominio.com`, máx. 150 | por campo |
 
 ## Seguridad (auditoría de octubre 2026)
 
@@ -236,17 +340,19 @@ Environment) o en la terminal: `SGB_DB_USER=sgb_app`, `SGB_DB_PASSWORD=...`.
 
 ### Pruebas automáticas
 
-`mvn test` ejecuta 27 pruebas JUnit (`src/test/java`) que **no se conectan a
+`mvn test` ejecuta **43 pruebas JUnit** (`src/test/java`) que **no se conectan a
 ninguna base de datos** (usan Mockito y MockMvc), así que es seguro correrlas
 en cualquier máquina: contraseñas, límite de intentos, transiciones de estado,
-reglas y permisos de `CitaService`, filtro de seguridad y manejo de errores.
+reglas y permisos de `CitaService`, filtro de seguridad, manejo de errores y,
+desde AA3-EV02, validaciones de caracteres especiales, longitudes, números y
+fechas (`ValidacionesDtoTest`, `FormatoDatosWebTest`).
 
 ### Ejemplo con curl
 
 ```bash
 curl -c c.txt -H "Content-Type: application/json" \
-     -d '{"correo":"usuario@correo.com","contrasena":"..."}' http://localhost:8081/api/auth/login
+     -d '{"correo":"cliente@sgb.com","contrasena":"Prueba2026*"}' http://localhost:8081/api/auth/login
 # copie el csrfToken de la respuesta
 curl -b c.txt -H "Content-Type: application/json" -H "X-CSRF-Token: <csrfToken>" \
-     -d '{"idCliente":6,"idBarbero":4,"idServicio":1,"fechaHora":"2026-12-01T10:00:00"}' http://localhost:8081/api/citas
+     -d '{"idCliente":4,"idBarbero":2,"idServicio":1,"fechaHora":"2026-12-01T10:00:00"}' http://localhost:8081/api/citas
 ```
